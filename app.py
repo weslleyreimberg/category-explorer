@@ -175,7 +175,7 @@ def crawl(site_url, page_limit, depth_limit, pause, sitemap_enabled, follow_all)
                     if follow_all or CATEGORY_HINTS.search(path) or (link["in_nav"] and link["text"]):
                         if len(path.strip("/").split("/")) <= 8:
                             candidates.append((u, link["text"] or "Link interno", link["in_nav"]))
-                candidates.sort(key=lambda item: (not item[2], not bool(CATEGORY_HINTS.search(urlparse(item[0]).path)))
+                candidates.sort(key=lambda item: (not item[2], not bool(CATEGORY_HINTS.search(urlparse(item[0]).path))))
                 added = set()
                 for u, text, _ in candidates:
                     if u not in added:
