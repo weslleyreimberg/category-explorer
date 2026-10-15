@@ -25,6 +25,21 @@ with st.sidebar:
 
 st.info("A aplicação recolhe apenas páginas publicamente acessíveis. Não contorna CAPTCHA, login ou bloqueios. Sites com conteúdo carregado apenas por JavaScript podem produzir resultados incompletos.")
 
+st.subheader("Ou importar uma árvore de categorias")
+st.caption("Se o site bloquear a recolha automática, importa um CSV exportado de uma fonte autorizada.")
+uploaded_file = st.file_uploader("Importar CSV de categorias", type=["csv"])
+if uploaded_file is not None:
+    try:
+        imported = pd.read_csv(uploaded_file, sep=None, engine="python")
+        if imported.empty:
+            st.warning("O ficheiro não contém linhas de dados.")
+        else:
+            st.session_state.results = imported
+            st.session_state.diagnostics = ["Dados importados pelo utilizador; não foram recolhidos diretamente pelo crawler."]
+            st.success(f"Importadas {len(imported)} linhas do ficheiro.")
+    except Exception as exc:
+        st.error(f"Não foi possível ler o CSV: {type(exc).__name__}: {exc}")
+
 CATEGORY_HINTS = re.compile(
     r"(catalog|mulher|homem|crianca|criança|roupa|sapatos|calcado|calçado|desporto|"
     r"acessorios|acessórios|casa|lifestyle|beleza|designer|vestidos|calcas|calças|"
@@ -200,7 +215,13 @@ if run:
     try:
         df, logs = crawl(base_url, max_pages, max_depth, delay, use_sitemaps, follow_all)
         st.session_state.results, st.session_state.diagnostics = df, logs
-        st.success(f"Extração terminada: {len(df)} páginas capturadas.")
+        if df.empty and any("HTTP 403" in line for line in logs):
+            st.error("A Zalando devolveu HTTP 403 (acesso recusado). O crawler não consegue recolher páginas deste ambiente.")
+            st.warning("Não serão feitas tentativas para contornar o bloqueio. Usa a importação CSV com dados obtidos de uma fonte autorizada ou pede acesso permitido ao site.")
+        elif df.empty:
+            st.warning("A execução terminou sem capturar páginas. Consulta o diagnóstico para identificar a causa.")
+        else:
+            st.success(f"Extração terminada: {len(df)} páginas capturadas.")
     except Exception as exc:
         st.error(f"A extração falhou: {type(exc).__name__}: {exc}")
         st.session_state.diagnostics = [f"{type(exc).__name__}: {exc}"]
